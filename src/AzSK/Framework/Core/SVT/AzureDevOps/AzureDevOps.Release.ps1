@@ -13,7 +13,7 @@ class Release: SVTBase
         $ScanToolName = [ConfigurationManager]::GetAzSKSettings().ScanToolName
         if((-not [string]::IsNullOrEmpty($ToolFolderPath)) -and (Test-Path $ToolFolderPath) -and (-not [string]::IsNullOrEmpty($ScanToolName)))
         {
-            $ToolPath = Get-ChildItem -Path $ToolFolderPath -File -Include $ScanToolName -Recurse 
+            $ToolPath = Get-ChildItem -Path $ToolFolderPath -File -Filter $ScanToolName -Recurse 
             if($ToolPath)
             {
                 $apiURL = $this.ResourceContext.ResourceId

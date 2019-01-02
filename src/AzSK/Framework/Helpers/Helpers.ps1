@@ -71,7 +71,7 @@ class Helpers {
 				[EventBase]::PublishGenericCustomMessage("No active Azure login session found. Initiating login flow...", [MessageType]::Warning);
                 [PSObject]$rmLogin = $null
                 $AzureEnvironment = [Constants]::DefaultAzureEnvironment
-                $AzskSettings = [Helpers]::LoadOfflineConfigFile("AzSKSettings.json", $true)          
+                $AzskSettings = [Helpers]::LoadOfflineConfigFile("AzSK.AzureDevOps.Settings.json", $true)          
                 if([Helpers]::CheckMember($AzskSettings,"AzureEnvironment"))
                 {
                    $AzureEnvironment = $AzskSettings.AzureEnvironment
@@ -460,42 +460,7 @@ class Helpers {
     }
 
     static [string] GetAccessToken([string] $resourceAppIdUri, [string] $tenantId) {
-        $rmContext = [Helpers]::GetCurrentRMContext()
-
-        if (-not $rmContext) {
-			throw ([SuppressedException]::new(("No Azure login found"), [SuppressedExceptionType]::InvalidOperation))
-        }
-
-        if ([string]::IsNullOrEmpty($tenantId) -and [Helpers]::CheckMember($rmContext, "Tenant")) {
-            $tenantId = $rmContext.Tenant.Id
-        }
-
-        $allEndpoints = @();
-        $resourceConstant = [AzureEnvironment+Endpoint] |
-            Get-Member -Static -MemberType Properties |
-            Where-Object {
-            $endpoint = [AzureEnvironmentExtensions]::GetEndpoint($rmContext.Environment, $_.Name)
-            $allEndpoints += $endpoint;
-            (-not [string]::IsNullOrWhiteSpace($endpoint) -and ($endpoint.Trimend('/') -eq $resourceAppIdUri.Trimend('/')))
-        } | Select-Object -First 1
-
-        if (-not $resourceConstant) {
-			throw ([SuppressedException]::new(("The resource URL [$resourceAppIdUri] is not supported. Supported values are: " + ($allEndpoints -join ", ")), [SuppressedExceptionType]::InvalidOperation))
-        }
-
-        $authResult = [AzureSession]::Instance.AuthenticationFactory.Authenticate(
-            $rmContext.Account,
-            $rmContext.Environment,
-            $tenantId,
-            [System.Security.SecureString] $null,
-            [Microsoft.Azure.Commands.Common.Authentication.ShowDialog]::Auto,$null,
-            $resourceConstant.Name);
-
-        if (-not ($authResult -and (-not [string]::IsNullOrWhiteSpace($authResult.AccessToken)))) {
-			throw ([SuppressedException]::new(("Unable to get access token. Authentication Failed."), [SuppressedExceptionType]::Generic))
-        }
-
-        return $authResult.AccessToken;
+        return [Helpers]::GetAzureDevOpsAccessToken();
     }
 
     static [string] GetAzureDevOpsAccessToken()
@@ -954,236 +919,7 @@ class Helpers {
 
         return $result;
     }
-
-    static [PSObject] NewAzskCompliantStorage([string]$StorageName, [Kind]$StorageKind,[string]$ResourceGroup,[string]$Location) {
-        $storageSku = [Constants]::NewStorageSku
-        $storageObject = $null
-        try {
-            #register resource providers
-            [Helpers]::RegisterResourceProviderIfNotRegistered("Microsoft.Storage");
-            [Helpers]::RegisterResourceProviderIfNotRegistered("microsoft.insights");
-
-            #create storage
-            $status = Get-AzureRmStorageAccountNameAvailability -Name $StorageName
-            if($null -ne $status -and  $status.NameAvailable -eq $true)
-            {
-                $newStorage = New-AzureRmStorageAccount -ResourceGroupName $ResourceGroup `
-                    -Name $StorageName `
-                    -Type $storageSku `
-                    -Location $Location `
-                    -Kind $StorageKind `
-                    -AccessTier Cool `
-                    -EnableHttpsTrafficOnly $true `
-                    -ErrorAction Stop
-
-                $retryAccount = 0
-                do {
-                    $storageObject = Get-AzureRmStorageAccount -ResourceGroupName $ResourceGroup -Name $StorageName -ErrorAction SilentlyContinue
-                    Start-Sleep -seconds 2
-                    $retryAccount++
-                }while (!$storageObject -and $retryAccount -ne 6)
-
-                if ($storageObject) {                                       
-
-                    #set diagnostics on
-                    $currentContext = $storageObject.Context
-                    Set-AzureStorageServiceLoggingProperty -ServiceType Blob -LoggingOperations All -Context $currentContext -RetentionDays 365 -PassThru -ErrorAction Stop
-                    Set-AzureStorageServiceMetricsProperty -MetricsType Hour -ServiceType Blob -Context $currentContext -MetricsLevel ServiceAndApi -RetentionDays 365 -PassThru -ErrorAction Stop
-                }
-            }
-            else
-            {
-                throw ([SuppressedException]::new(("The specified name for the storage account is not available. Please rerun this command to try a different name."), [SuppressedExceptionType]::Generic));          
-            }
-        }
-        catch {
-            [EventBase]::PublishGenericException($_);
-            $storageObject = $null
-            #clean-up storage if error occurs
-            if ((Get-AzureRmResource -ResourceGroupName $ResourceGroup -Name $StorageName|Measure-Object).Count -gt 0) {
-            # caused deletion of storage on any exception.
-                # Remove-AzureRmStorageAccount -ResourceGroupName $ResourceGroup -Name $StorageName -Force -ErrorAction SilentlyContinue
-                
-            }
-        }
-        return $storageObject
-    }
-    static [PSObject] NewAzskCompliantStorage([string]$StorageName, [string]$ResourceGroup, [string]$Location) {
-      return [Helpers]::NewAzskCompliantStorage($StorageName,[Constants]::NewStorageKind,[string]$ResourceGroup,[string]$Location)
-    }
-
     
-    static [string] FetchTagsString([PSObject]$TagsHashTable)
-    {
-        [string] $tagsString = "";
-        try {
-            if(($TagsHashTable | Measure-Object).Count -gt 0)
-            {
-                $TagsHashTable.Keys | ForEach-Object {
-                    $key = $_;
-                    $value = $TagsHashTable[$key];
-                    $tagsString = $tagsString + "$($key):$($value);";                
-                }
-            }   
-        }
-        catch {
-            #eat exception as if not able to fetch tags, it would return empty instead of breaking the flow
-        }        
-        return $tagsString;
-    }
-
-	static [void] SetResourceGroupTags([string]$RGName, [PSObject]$TagsHashTable, [bool] $Remove) {
-		[Helpers]::SetResourceGroupTags($RGName, $TagsHashTable, $Remove, $true) 
-	}
-
-	static [void] SetResourceGroupTags([string]$RGName, [PSObject]$TagsHashTable, [bool] $Remove, [bool] $update) {
-		$azskResourceGroup = Get-AzureRmResourceGroup -Name $RGName -ErrorAction SilentlyContinue;
-		if(($azskResourceGroup | Measure-Object).Count -gt 0)
-		{
-			$tags = $azskResourceGroup.Tags;
-			if($null -eq $tags)
-			{
-				$tags = @{}
-			}
-			if(($TagsHashTable | Measure-Object).Count -gt 0)
-			{
-				$TagsHashTable.Keys | ForEach-Object {
-					$key = $_;
-					if($tags.ContainsKey($key))
-					{
-						if($update)
-						{
-							$tags[$key] = $TagsHashTable[$key];
-						}
-						if($Remove)
-						{
-							$tags.Remove($key);
-						}
-					}
-					elseif(-not $Remove)
-					{
-						$tags.Add($key, $TagsHashTable[$key])
-					}
-				}
-			}
-			try
-			{
-				Set-AzureRmResourceGroup -Name $RGName -Tag $tags -ErrorAction Stop
-			}
-			catch
-			{
-                #Skipping tag exception. Exception can be raised due to privilege issues.
-				#[EventBase]::PublishGenericCustomMessage(" `r`nError occured while adding tag(s) on resource group [$RGName]. $($_.Exception)", [MessageType]::Warning);
-			}
-		}
-    }
-
-	static [void] SetResourceTags([string] $ResourceId, [PSObject] $TagsHashTable, [bool] $Remove, [bool] $update) {
-		$azskResource = Get-AzureRmResource -ResourceId $ResourceId -ErrorAction SilentlyContinue;
-		if(($azskResource | Measure-Object).Count -gt 0)
-		{
-			$tags = $azskResource.Tags;
-			if($null -eq $tags)
-			{
-				$tags = @{}
-			}
-			if(($TagsHashTable | Measure-Object).Count -gt 0)
-			{
-				$TagsHashTable.Keys | ForEach-Object {
-					$key = $_;
-					if($tags.ContainsKey($key))
-					{
-						if($update)
-						{
-							$tags[$key] = $TagsHashTable[$key];
-						}
-						if($Remove)
-						{
-							$tags.Remove($key);
-						}
-					}
-					elseif(-not $Remove)
-					{
-						$tags.Add($key, $TagsHashTable[$key])
-					}
-				}
-			}			
-			try
-			{
-				Set-AzureRmResource -ResourceId $ResourceId -Tag $tags -Force -ErrorAction Stop
-			}
-			catch
-			{
-				[EventBase]::PublishGenericCustomMessage(" `r`nError occured while adding tag(s) on resource [$ResourceId]. $($_.Exception)", [MessageType]::Warning);
-			}
-		}
-    }
-
-	static [PSObject] GetResourceGroupTags([string]$RGName)
-	{
-		$azskResourceGroup = Get-AzureRmResourceGroup -Name $RGName -ErrorAction SilentlyContinue;
-		$tags = @{}
-		if(($azskResourceGroup | Measure-Object).Count -gt 0)
-		{
-			$tags = $azskResourceGroup.Tags;
-			if($null -eq $tags)
-			{
-				$tags = @{}
-			}
-		}
-		return $tags 
-	}
-
-	static [string] GetResourceGroupTag([string]$RGName, [string] $tagName)
-	{
-		$azskResourceGroup = Get-AzureRmResourceGroup -Name $RGName -ErrorAction SilentlyContinue;
-		$tags = @{}
-		if(($azskResourceGroup | Measure-Object).Count -gt 0)
-		{
-			$tags = $azskResourceGroup.Tags;
-			if(($tags | Measure-Object).Count -gt 0)
-			{
-				return $tags[$tagName];
-			}
-		}
-		return ""; 
-	}
-
-
-
-    static [bool] NewAzSKResourceGroup([string]$ResourceGroup, [string]$Location, [string] $Version) {
-        try {
-            [Hashtable] $RGTags = @{};
-            if ([string]::IsNullOrWhiteSpace($Version))
-			 {
-               $version= [Constants]::AzSKCurrentModuleVersion
-            }
-                $RGTags += @{
-                    "AzSKVersion" = $Version;
-                    "CreationTime" = $(get-date).ToUniversalTime().ToString("yyyyMMdd_HHmmss");
-                }
-            
-            $newRG = New-AzureRmResourceGroup -Name $ResourceGroup -Location $Location `
-                -Tag $RGTags `
-                -ErrorAction Stop
-
-            return $true
-        }
-        catch {
-			#return as false in the case of exception. Caller of this function is taking care if the value is false
-            return $false
-        }
-
-    }
-
-    static [void] CreateNewResourceGroupIfNotExists([string]$ResourceGroup, [string]$Location, [string] $Version) 
-    {
-       if((Get-AzureRmResourceGroup -Name $ResourceGroup -ErrorAction SilentlyContinue | Measure-Object).Count -eq 0)
-	    {
-		    [Helpers]::NewAzSKResourceGroup($ResourceGroup,$Location,$Version)
-	    }  
-    }
-
     static [string] ComputeHash([String] $data) {
         $HashValue = [System.Text.StringBuilder]::new()
         [System.Security.Cryptography.HashAlgorithm]::Create("SHA256").ComputeHash([System.Text.Encoding]::UTF8.GetBytes($data))| ForEach-Object {
@@ -1201,27 +937,8 @@ class Helpers {
             return "NO_ACTIVE_SESSION"
         }
     }
-	static [string[]] GetCurrentUserRoleAtSubscriptionScope([string] $SubscriptionId)
-	{
-		$signInId = [Helpers]::GetCurrentSessionUser()
-		#Ignore errors in case user doesn't have subscription scope role/not authorized to perform role assignment read
-		$roleAssignments = @();
-		#same tenant
-		$roleAssignments += Get-AzureRmRoleAssignment -Scope "/subscriptions/$SubscriptionId" -IncludeClassicAdministrators -ErrorAction SilentlyContinue | Where-Object { ($_.SignInName -like '*#EXT#@*.onmicrosoft.com' -and $_.SignInName.Split("#EXT#")[0] -eq ($signInId -replace "@","_")) -or $_.SignInName -eq $signInId }
-
-		$userRoles = @();
-		if(($roleAssignments | Measure-Object).Count -gt 0)
-		{
-			$roleAssignments | ForEach-Object{
-				$userRoles += ($_.RoleDefinitionName.Split(";"));
-			}
-			return $userRoles;
-		}
-		else
-		{
-			return $null
-		}
-	}
+    
+    
     static [VerificationResult] EvaluateVerificationResult([VerificationResult] $verificationResult, [AttestationStatus] $attestationStatus) {
         [VerificationResult] $result = $verificationResult;
         # No action required if Attestation status is None OR verification result is Passed

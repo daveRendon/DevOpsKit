@@ -36,7 +36,7 @@ class AzSKSettings {
 	[bool] $PrivacyNoticeAccepted = $false;
 	[bool] $IsCentralScanModeOn = $false;
     hidden static [AzSKSettings] $Instance = $null;
-	hidden static [string] $FileName = "AzSKSettings.json";
+	hidden static [string] $FileName = "AzSK.AzureDevOps.Settings.json";
 	[bool] $StoreComplianceSummaryInUserSubscriptions;
 	[string] $ScanToolPath = [string]::Empty
 	[string] $ScanToolName = [string]::Empty

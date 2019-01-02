@@ -73,7 +73,7 @@ class FileOutputBase: ListenerBase
 				$outputPath += ("Default\{0}\" -f $runPath);            
 			}
 			else {
-				$outputPath += ("Sub_{0}\{1}\" -f $sanitizedPath, $runPath);            
+				$outputPath += ("Org_{0}\{1}\" -f $sanitizedPath, $runPath);            
 			}
 
 			if (-not [string]::IsNullOrEmpty($subFolderPath)) {

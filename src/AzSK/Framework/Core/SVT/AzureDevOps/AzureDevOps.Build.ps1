@@ -34,7 +34,7 @@ class Build: SVTBase
                         $searcherPath = Get-ChildItem -Path $($ToolPath.Directory.FullName) -Include "buildsearchers.xml" -Recurse
                         ."$($Toolpath.FullName)" -I $buildDefPath -S $searcherPath -f csv -Ve 1 -O "$buildDefPath\Scan"    
                         
-                        $scanResultPath = Get-ChildItem -Path $buildDefPath -File -Include "*.csv"
+                        $scanResultPath = Get-ChildItem -Path $buildDefPath -File -Filter "*.csv"
                         if($scanResultPath -and (Test-Path $scanResultPath.FullName))
                         {
                             $credList = Get-Content -Path $scanResultPath.FullName | ConvertFrom-Csv 

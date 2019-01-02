@@ -3,17 +3,17 @@
 Each AzSK cmdlet writes output to a folder whose location is determined as below:
 
 --------------------------------------------------------------
-AzSK-Root-Output-Folder = %LocalAppData%\Microsoft\AzSKLogs 
-	E.g., "C:\Users\<userName>\AppData\Local\Microsoft\AzSKLogs"
+AzSK-Root-Output-Folder = %LocalAppData%\Microsoft\AzSK.AzureDevOpsLogs 
+	E.g., "C:\Users\<userName>\AppData\Local\Microsoft\AzSK.AzureDevOpsLogs"
 
 --------------------------------------------------------------
-Sub-Folder = Sub_<Subscription Name>\<Timestamp>_<CommandAbbreviation> 
-	E.g., "Sub_[yourSubscriptionName]\20170321_183800_GSS)"
+Sub-Folder = Org_<Orgnization Name>\<Timestamp>_<CommandAbbreviation> 
+	E.g., "Org_[yourOrganizationName]\20170321_183800_GSS)"
 
 
 --------------------------------------------------------------
 Thus, the full path to an output folder for a specific cmdlet might look like: 
-	E.g., "C:\Users\userName\AppData\Local\Microsoft\AzSKLogs\Sub_[yourSubscriptionName]\20170321_183800_GSS"
+	E.g., "C:\Users\userName\AppData\Local\Microsoft\AzSK.AzureDevOpsLogs.Logs\Org_[yourSubscriptionName]\20170321_183800_GSS"
 
 By default, cmdlets open this folder upon completion of the cmdlet (we assume you'd be interested in examining the control evaluation status, etc.)
 
@@ -29,11 +29,11 @@ The contents of the output folder are organized as under:
 	[This is the summary CSV file listing all applicable controls and their attestation details. This file will be generated only for the cmdlet Get-AzSKInfo -SubscriptionId <SubscriptionId> -InfoType AttestationInfo.]
 
 
-  	\<Resource_Group_or_Subscription_Name_Folder>	
-	[This folder corresponds to the resource-group or subscription that was evaluated. If multiple resource groups were scanned, there is one folder for each resource group.]
+  	\<Organization_or_Project_Folder>	
+	[This folder corresponds to the project or organization that was evaluated. If multiple projects were scanned, there is one folder for each project.]
 
 		\<resourceType>.LOG					
-		[This is the detailed/raw output log of controls evaluated for a given resource type within a resource group.]
+		[This is the detailed/raw output log of controls evaluated for a given resource type within a project.]
 
 
 	\Etc
@@ -45,7 +45,7 @@ The contents of the output folder are organized as under:
 		\EnvironmentDetails.LOG				
 		[This is the log file containing environment data of current PowerShell session.]
 		\SecurityEvaluationData.json		
-		[This is the detailed security data for each control that was evaluated. This file will be generated only for SVT cmdlets like Get-AzSKAzureServicesSecurityStatus, Get-AzSKSubscriptionSecurityStatus etc.]
+		[This is the detailed security data for each control that was evaluated. This file will be generated only for SVT cmdlets like Get-AzSKAzureDevOpsSecurityStatus etc.]
 
 
 	\FixControlScripts						

@@ -8,19 +8,7 @@ class AzSKRoot: EventBase
     {   
         [Helpers]::AbstractClass($this, [AzSKRoot]);
         
-		#Validate SubId
-		[Guid] $validatedId = [Guid]::Empty;
-		if([Guid]::TryParse($subscriptionId, [ref] $validatedId))
-		{
-			#Set up subscription
-			$this.SubscriptionContext = [SubscriptionContext]@{
-				SubscriptionId = $validatedId.Guid;
-				Scope = "/subscriptions/$($validatedId.Guid)";
-			};
-
-			$this.SetAzureContext();
-		}
-		elseif((-not [string]::IsNullOrEmpty($subscriptionId)))
+		if((-not [string]::IsNullOrEmpty($subscriptionId)))
 		{
 			$this.SubscriptionContext = [SubscriptionContext]@{
 				SubscriptionId = $subscriptionId;
@@ -31,80 +19,10 @@ class AzSKRoot: EventBase
 		}
 		else
 		{
-			throw [SuppressedException] ("Subscription Id [$subscriptionId] is malformed. Subscription Id should contain 32 digits with 4 dashes (xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx).")
+			throw [SuppressedException] ("OrganizationName [$subscriptionId] is malformed. Subscription Id should contain 32 digits with 4 dashes (xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx).")
 		}
 	}
 	
-    hidden [void] SetAzureContext()
-    {
-		$currentContext = [Helpers]::GetCurrentRMContext()
-
-		if($this.SubscriptionContext.SubscriptionId -eq [Constants]::BlankSubscriptionId)
-		{
-			#[Helpers]::currentRMContext.Subscription.SubscriptionId = [Constants]::BlankSubscriptionId
-			$this.SubscriptionContext.SubscriptionName = [Constants]::BlankSubscriptionName
-			#[Helpers]::currentRMContext.Subscription.SubscriptionName = $this.SubscriptionContext.SubscriptionName 
-			$this.SubscriptionContext.Scope = [Constants]::BlankScope
-			return
-		}
-
-        if((-not $currentContext) -or ($currentContext -and ((-not $currentContext.Subscription -and ($this.SubscriptionContext.SubscriptionId -ne [Constants]::BlankSubscriptionId)) `
-				-or -not $currentContext.Account)))
-        {
-            $this.PublishCustomMessage("No active Azure login session found. Initiating login flow...", [MessageType]::Warning);
-
-			if($this.SubscriptionContext.SubscriptionId -ne [Constants]::BlankSubscriptionId)
-			{
-				$rmLogin = Connect-AzureRmAccount -SubscriptionId $this.SubscriptionContext.SubscriptionId
-			}
-			else
-			{
-				$rmLogin = Connect-AzureRmAccount
-			}
-            
-			if($rmLogin)
-			{
-				$currentContext = $rmLogin.Context;
-			}
-        }
-
-		if($currentContext -and $currentContext.Subscription -and $currentContext.Subscription.Id)
-		{
-		    if(($currentContext.Subscription.Id -ne $this.SubscriptionContext.SubscriptionId) -and ($this.SubscriptionContext.SubscriptionId -ne [Constants]::BlankSubscriptionId))
-			{
-				$currentContext = Set-AzureRmContext -SubscriptionId $this.SubscriptionContext.SubscriptionId -ErrorAction Stop   
-        
-				    
-				# $currentContext will contain the desired subscription (or $null if id is wrong or no permission)
-				if ($null -eq $currentContext)
-				{
-					throw [SuppressedException] ("Invalid Subscription Id [" + $this.SubscriptionContext.SubscriptionId + "]") 
-				}
-				[Helpers]::ResetCurrentRMContext()
-				[Helpers]::GetCurrentRMContext()
-			}
-			elseif(($currentContext.Subscription.Id -ne $this.SubscriptionContext.SubscriptionId) -and ($this.SubscriptionContext.SubscriptionId -eq [Constants]::BlankSubscriptionId))
-			{
-				$this.SubscriptionContext.SubscriptionId = $currentContext.Subscription.Id
-				$this.SubscriptionContext.SubscriptionName = $currentContext.Subscription.Name
-				$this.SubscriptionContext.Scope = "/subscriptions/" +$currentContext.Subscription.Id
-			}
-		}
-		elseif($null -ne $currentContext -and ($this.SubscriptionContext.SubscriptionId -eq [Constants]::BlankSubscriptionId))
-		{
-			$this.SubscriptionContext.SubscriptionName = [Constants]::BlankSubscriptionName
-		}
-		else
-		{
-            throw [SuppressedException] ("Subscription Id [" + $this.SubscriptionContext.SubscriptionId + "] is invalid or you may not have permissions.")
-		}
-
-        if ($null -ne $currentContext -and [Helpers]::CheckMember($currentContext, "Subscription"))
-        {
-            $this.SubscriptionContext.SubscriptionName = $currentContext.Subscription.Name;
-		}
-    }
-
     [PSObject] LoadServerConfigFile([string] $fileName)
     {
         return [ConfigurationManager]::LoadServerConfigFile($fileName);

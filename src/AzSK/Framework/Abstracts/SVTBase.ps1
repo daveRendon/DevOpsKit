@@ -6,7 +6,7 @@ class SVTBase: AzSKRoot
     hidden [SVTConfig] $SVTConfig
     hidden [PSObject] $ControlSettings
 
-	hidden [ControlStateExtension] $ControlStateExt;
+	#hidden [ControlStateExtension] $ControlStateExt;
 	
 	hidden [ControlState[]] $ResourceState;
 	hidden [ControlState[]] $DirtyResourceStates;
@@ -600,116 +600,94 @@ class SVTBase: AzSKRoot
     }
 	
 	# Policy compliance methods begin
-	hidden [ControlResult] ComputeFinalScanResult([ControlResult] $azskScanResult, [ControlResult] $policyScanResult)
-	{
-		if($policyScanResult.VerificationResult -ne [VerificationResult]::Failed -and $azskScanResult.VerificationResult -ne [VerificationResult]::Passed)
-		{
-			return $azskScanResult
-		}
-		else
-		{
-			return $policyScanResult;
-		}
-	}
-	hidden [ControlResult] CheckPolicyCompliance([ControlItem] $controlItem, [ControlResult] $controlResult)
-	{
-		$initiativeName = [ConfigurationManager]::GetAzSKConfigData().AzSKInitiativeName
-		$defnResourceId = $this.GetResourceId() + $controlItem.PolicyDefnResourceIdSuffix
-		$policyState = Get-AzureRmPolicyState -ResourceId $defnResourceId -Filter "PolicyDefinitionId eq '/providers/microsoft.authorization/policydefinitions/$($controlItem.PolicyDefinitionGuid)' and PolicySetDefinitionName eq '$initiativeName'"
-		if($policyState)
-        {
-            $policyStateObject = $policyState | Select-Object ResourceId, PolicyAssignmentId, PolicyDefinitionId, PolicyAssignmentScope, PolicyDefinitionAction, PolicySetDefinitionName, IsCompliant
-		    if($policyState.IsCompliant)
-            {
-			    $controlResult.AddMessage([VerificationResult]::Passed,
-										    [MessageData]::new("Policy compliance data:", $policyStateObject));
-            }
-		    else
-            { 
-			    #$controlResult.EnableFixControl = $true;
-			    $controlResult.AddMessage([VerificationResult]::Failed,
-										    [MessageData]::new("Policy compliance data:", $policyStateObject));
-            }
-            return $controlResult;
-        }
-        return $null;
-    }
+	# hidden [ControlResult] ComputeFinalScanResult([ControlResult] $azskScanResult, [ControlResult] $policyScanResult)
+	# {
+	# 	if($policyScanResult.VerificationResult -ne [VerificationResult]::Failed -and $azskScanResult.VerificationResult -ne [VerificationResult]::Passed)
+	# 	{
+	# 		return $azskScanResult
+	# 	}
+	# 	else
+	# 	{
+	# 		return $policyScanResult;
+	# 	}
+	# }
+
 	# Policy compliance methods end
 	
-	hidden [SVTEventContext] FetchControlState([ControlItem] $controlItem)
-    {
-		[SVTEventContext] $singleControlResult = $this.CreateSVTEventContextObject();
-        $singleControlResult.ControlItem = $controlItem;
+	# hidden [SVTEventContext] FetchControlState([ControlItem] $controlItem)
+    # {
+	# 	[SVTEventContext] $singleControlResult = $this.CreateSVTEventContextObject();
+    #     $singleControlResult.ControlItem = $controlItem;
 
-		$controlState = @();
-		$controlStateValue = @();
-		try
-		{
-			$resourceStates = $this.GetResourceState();
-			if(($resourceStates | Measure-Object).Count -ne 0)
-			{
-				$controlStateValue += $resourceStates | Where-Object { $_.InternalId -eq $singleControlResult.ControlItem.Id };
-				$controlStateValue | ForEach-Object {
-					$currentControlStateValue = $_;
-					if($null -ne $currentControlStateValue)
-					{
-						#assign expiry date
-						$expiryIndays=$this.CalculateExpirationInDays($singleControlResult,$currentControlStateValue);
-						if($expiryIndays -ne -1)
-						{
-							$currentControlStateValue.State.ExpiryDate = ($currentControlStateValue.State.AttestedDate.AddDays($expiryIndays)).ToString("MM/dd/yyyy");
-						}
-						$controlState += $currentControlStateValue;
-					}
-				}
-			}
-		}
-		catch
-		{
-			$this.EvaluationError($_);
-		}
-		if(($controlState|Measure-Object).Count -gt 0)
-		{
-			$this.ControlStarted($singleControlResult);
-			if($controlItem.Enabled -eq $false)
-			{
-				$this.ControlDisabled($singleControlResult);
-			}
-			else
-			{
-				$controlResult = $this.CreateControlResult($controlItem.FixControl);
-				$singleControlResult.ControlResults += $controlResult;          
-				$singleControlResult.ControlResults | 
-				ForEach-Object {
-					try
-					{
-						$currentItem = $_;
+	# 	$controlState = @();
+	# 	$controlStateValue = @();
+	# 	try
+	# 	{
+	# 		$resourceStates = $this.GetResourceState();
+	# 		if(($resourceStates | Measure-Object).Count -ne 0)
+	# 		{
+	# 			$controlStateValue += $resourceStates | Where-Object { $_.InternalId -eq $singleControlResult.ControlItem.Id };
+	# 			$controlStateValue | ForEach-Object {
+	# 				$currentControlStateValue = $_;
+	# 				if($null -ne $currentControlStateValue)
+	# 				{
+	# 					#assign expiry date
+	# 					$expiryIndays=$this.CalculateExpirationInDays($singleControlResult,$currentControlStateValue);
+	# 					if($expiryIndays -ne -1)
+	# 					{
+	# 						$currentControlStateValue.State.ExpiryDate = ($currentControlStateValue.State.AttestedDate.AddDays($expiryIndays)).ToString("MM/dd/yyyy");
+	# 					}
+	# 					$controlState += $currentControlStateValue;
+	# 				}
+	# 			}
+	# 		}
+	# 	}
+	# 	catch
+	# 	{
+	# 		$this.EvaluationError($_);
+	# 	}
+	# 	if(($controlState|Measure-Object).Count -gt 0)
+	# 	{
+	# 		$this.ControlStarted($singleControlResult);
+	# 		if($controlItem.Enabled -eq $false)
+	# 		{
+	# 			$this.ControlDisabled($singleControlResult);
+	# 		}
+	# 		else
+	# 		{
+	# 			$controlResult = $this.CreateControlResult($controlItem.FixControl);
+	# 			$singleControlResult.ControlResults += $controlResult;          
+	# 			$singleControlResult.ControlResults | 
+	# 			ForEach-Object {
+	# 				try
+	# 				{
+	# 					$currentItem = $_;
 
-						if($controlState.Count -ne 0)
-						{
-							# Process the state if it's available
-							$childResourceState = $controlState | Where-Object { $_.ChildResourceName -eq  $currentItem.ChildResourceName } | Select-Object -First 1;
-							if($childResourceState)
-							{
-								$currentItem.StateManagement.AttestedStateData = $childResourceState.State;
-								$currentItem.AttestationStatus = $childResourceState.AttestationStatus;
-								$currentItem.ActualVerificationResult = $childResourceState.ActualVerificationResult;
-								$currentItem.VerificationResult = [VerificationResult]::NotScanned
-							}
-						}
-					}
-					catch
-					{
-						$this.EvaluationError($_);
-					}
-				};
+	# 					if($controlState.Count -ne 0)
+	# 					{
+	# 						# Process the state if it's available
+	# 						$childResourceState = $controlState | Where-Object { $_.ChildResourceName -eq  $currentItem.ChildResourceName } | Select-Object -First 1;
+	# 						if($childResourceState)
+	# 						{
+	# 							$currentItem.StateManagement.AttestedStateData = $childResourceState.State;
+	# 							$currentItem.AttestationStatus = $childResourceState.AttestationStatus;
+	# 							$currentItem.ActualVerificationResult = $childResourceState.ActualVerificationResult;
+	# 							$currentItem.VerificationResult = [VerificationResult]::NotScanned
+	# 						}
+	# 					}
+	# 				}
+	# 				catch
+	# 				{
+	# 					$this.EvaluationError($_);
+	# 				}
+	# 			};
 
-			}
-			$this.ControlCompleted($singleControlResult);
-		}
+	# 		}
+	# 		$this.ControlCompleted($singleControlResult);
+	# 	}
 
-        return $singleControlResult;
-    }
+    #     return $singleControlResult;
+    # }
 	hidden [void] PostEvaluationCompleted([SVTEventContext[]] $ControlResults)
 	{
 	    # If ResourceType is Databricks, reverting security protocol 
@@ -717,36 +695,36 @@ class SVTBase: AzSKRoot
 		{
 		  [Net.ServicePointManager]::SecurityProtocol = $this.currentSecurityProtocol 
 		}
-		$this.UpdateControlStates($ControlResults);
+		#$this.UpdateControlStates($ControlResults);
 	}
 
-	hidden [void] UpdateControlStates([SVTEventContext[]] $ControlResults)
-	{
-		if($null -ne $this.ControlStateExt -and $this.ControlStateExt.HasControlStateWriteAccessPermissions() -and ($ControlResults | Measure-Object).Count -gt 0 -and ($this.ResourceState | Measure-Object).Count -gt 0)
-		{
-			$effectiveResourceStates = @();
-			if(($this.DirtyResourceStates | Measure-Object).Count -gt 0)
-			{
-				$this.ResourceState | ForEach-Object {
-					$controlState = $_;
-					if(($this.DirtyResourceStates | Where-Object { $_.InternalId -eq $controlState.InternalId -and $_.ChildResourceName -eq $controlState.ChildResourceName } | Measure-Object).Count -eq 0)
-					{
-						$effectiveResourceStates += $controlState;
-					}
-				}
-			}
-			else
-			{
-				#If no dirty states found then no action needed.
-				return;
-			}
+	# hidden [void] UpdateControlStates([SVTEventContext[]] $ControlResults)
+	# {
+	# 	if($null -ne $this.ControlStateExt -and $this.ControlStateExt.HasControlStateWriteAccessPermissions() -and ($ControlResults | Measure-Object).Count -gt 0 -and ($this.ResourceState | Measure-Object).Count -gt 0)
+	# 	{
+	# 		$effectiveResourceStates = @();
+	# 		if(($this.DirtyResourceStates | Measure-Object).Count -gt 0)
+	# 		{
+	# 			$this.ResourceState | ForEach-Object {
+	# 				$controlState = $_;
+	# 				if(($this.DirtyResourceStates | Where-Object { $_.InternalId -eq $controlState.InternalId -and $_.ChildResourceName -eq $controlState.ChildResourceName } | Measure-Object).Count -eq 0)
+	# 				{
+	# 					$effectiveResourceStates += $controlState;
+	# 				}
+	# 			}
+	# 		}
+	# 		else
+	# 		{
+	# 			#If no dirty states found then no action needed.
+	# 			return;
+	# 		}
 
-			#get the uniqueid from the first control result. Here we can take first as it would come here for each resource.
-			$id = $ControlResults[0].GetUniqueId();
+	# 		#get the uniqueid from the first control result. Here we can take first as it would come here for each resource.
+	# 		$id = $ControlResults[0].GetUniqueId();
 
-			$this.ControlStateExt.SetControlState($id, $effectiveResourceStates, $true)
-		}
-	}
+	# 		$this.ControlStateExt.SetControlState($id, $effectiveResourceStates, $true)
+	# 	}
+	# }
 
 	hidden [void] PostProcessData([SVTEventContext] $eventContext)
 	{
@@ -777,30 +755,30 @@ class SVTBase: AzSKRoot
 			
 			$this.GetDataFromSubscriptionReport($eventContext);
 
-			$resourceStates = $this.GetResourceState()			
-			if(($resourceStates | Measure-Object).Count -ne 0)
-			{
-				$controlStateValue += $resourceStates | Where-Object { $_.InternalId -eq $eventContext.ControlItem.Id };
-				$controlStateValue | ForEach-Object {
-					$currentControlStateValue = $_;
-					if($null -ne $currentControlStateValue)
-					{
-						if($this.IsStateActive($eventContext, $currentControlStateValue))
-						{
-							$controlState += $currentControlStateValue;
-						}
-						else
-						{
-							#add to the dirty state list so that it can be removed later
-							$this.DirtyResourceStates += $currentControlStateValue;
-						}
-					}
-				}
-			}
-			elseif($null -eq $resourceStates)
-			{
-				$tempHasRequiredAccess = $false;
-			}
+			# $resourceStates = $this.GetResourceState()			
+			# if(($resourceStates | Measure-Object).Count -ne 0)
+			# {
+			# 	$controlStateValue += $resourceStates | Where-Object { $_.InternalId -eq $eventContext.ControlItem.Id };
+			# 	$controlStateValue | ForEach-Object {
+			# 		$currentControlStateValue = $_;
+			# 		if($null -ne $currentControlStateValue)
+			# 		{
+			# 			if($this.IsStateActive($eventContext, $currentControlStateValue))
+			# 			{
+			# 				$controlState += $currentControlStateValue;
+			# 			}
+			# 			else
+			# 			{
+			# 				#add to the dirty state list so that it can be removed later
+			# 				$this.DirtyResourceStates += $currentControlStateValue;
+			# 			}
+			# 		}
+			# 	}
+			# }
+			# elseif($null -eq $resourceStates)
+			# {
+			# 	$tempHasRequiredAccess = $false;
+			# }
 		}
 		catch
 		{
@@ -817,8 +795,8 @@ class SVTBase: AzSKRoot
 
 				#Logic to append the control result with the permissions metadata
 				[SessionContext] $sc = $currentItem.CurrentSessionContext;
-				$sc.Permissions.HasAttestationWritePermissions = $this.ControlStateExt.HasControlStateWriteAccessPermissions();
-				$sc.Permissions.HasAttestationReadPermissions = $this.ControlStateExt.HasControlStateReadAccessPermissions();
+				# $sc.Permissions.HasAttestationWritePermissions = $this.ControlStateExt.HasControlStateWriteAccessPermissions();
+				# $sc.Permissions.HasAttestationReadPermissions = $this.ControlStateExt.HasControlStateReadAccessPermissions();
 				# marking the required access as false if there was any error reading the attestation data
 				$sc.Permissions.HasRequiredAccess = $sc.Permissions.HasRequiredAccess -and $tempHasRequiredAccess;
 
@@ -923,27 +901,27 @@ class SVTBase: AzSKRoot
 		}
 	}
 
-	hidden [ControlState[]] GetResourceState()
-	{
-		if($null -eq $this.ResourceState)
-		{
-			$this.ResourceState = @();
-			if($this.ControlStateExt -and $this.ControlStateExt.HasControlStateReadAccessPermissions())
-			{
-				$resourceStates = $this.ControlStateExt.GetControlState($this.GetResourceId())
-				if($null -ne $resourceStates)
-				{
-					$this.ResourceState += $resourceStates
-				}
-				else
-				{
-					return $null;
-				}				
-			}
-		}
+	# hidden [ControlState[]] GetResourceState()
+	# {
+	# 	if($null -eq $this.ResourceState)
+	# 	{
+	# 		$this.ResourceState = @();
+	# 		if($this.ControlStateExt -and $this.ControlStateExt.HasControlStateReadAccessPermissions())
+	# 		{
+	# 			$resourceStates = $this.ControlStateExt.GetControlState($this.GetResourceId())
+	# 			if($null -ne $resourceStates)
+	# 			{
+	# 				$this.ResourceState += $resourceStates
+	# 			}
+	# 			else
+	# 			{
+	# 				return $null;
+	# 			}				
+	# 		}
+	# 	}
 
-		return $this.ResourceState;
-	}
+	# 	return $this.ResourceState;
+	# }
 
 	#Function to validate attestation data expiry validation
 	hidden [bool] IsStateActive([SVTEventContext] $eventcontext,[ControlState] $controlState)
@@ -1040,216 +1018,6 @@ class SVTBase: AzSKRoot
 			$expiryInDays = -1
 		}
 		return $expiryInDays
-	}
-
-	hidden [ControlResult] CheckDiagnosticsSettings([ControlResult] $controlResult)
-	{
-		$diagnostics = $Null
-		try
-		{
-			$diagnostics = Get-AzureRmDiagnosticSetting -ResourceId $this.GetResourceId() -ErrorAction Stop -WarningAction SilentlyContinue
-		}
-		catch
-		{
-			if([Helpers]::CheckMember($_.Exception, "Response") -and ($_.Exception).Response.StatusCode -eq [System.Net.HttpStatusCode]::NotFound)
-			{
-				$controlResult.AddMessage([VerificationResult]::Failed, "Diagnostics setting is disabled for resource - [$($this.ResourceContext.ResourceName)].");
-				return $controlResult
-			}
-			else
-			{
-				$this.PublishException($_);
-			}
-		}
-		if($Null -ne $diagnostics -and ($diagnostics.Logs | Measure-Object).Count -ne 0)
-		{
-			$nonCompliantLogs = $diagnostics.Logs |
-								Where-Object { -not ($_.Enabled -and
-											($_.RetentionPolicy.Days -eq $this.ControlSettings.Diagnostics_RetentionPeriod_Forever -or
-											$_.RetentionPolicy.Days -eq $this.ControlSettings.Diagnostics_RetentionPeriod_Min))};
-
-			$selectedDiagnosticsProps = $diagnostics | Select-Object -Property Logs, Metrics, StorageAccountId, EventHubName, Name;
-
-			if(($nonCompliantLogs | Measure-Object).Count -eq 0)
-			{
-				$controlResult.AddMessage([VerificationResult]::Passed,
-					"Diagnostics settings are correctly configured for resource - [$($this.ResourceContext.ResourceName)]",
-					$selectedDiagnosticsProps);
-			}
-			else
-			{
-				$failStateDiagnostics = $nonCompliantLogs | Select-Object -Property Logs, Metrics, StorageAccountId, EventHubName, Name;
-				$controlResult.SetStateData("Non compliant resources are:", $failStateDiagnostics);
-				$controlResult.AddMessage([VerificationResult]::Failed,
-					"Diagnostics settings are either disabled OR not retaining logs for at least $($this.ControlSettings.Diagnostics_RetentionPeriod_Min) days for resource - [$($this.ResourceContext.ResourceName)]",
-					$selectedDiagnosticsProps);
-			}
-		}
-		else
-		{
-			$controlResult.AddMessage([VerificationResult]::Failed, "Diagnostics setting is disabled for resource - [$($this.ResourceContext.ResourceName)].");
-		}
-
-		return $controlResult;
-	}
-
-	hidden [ControlResult] CheckRBACAccess([ControlResult] $controlResult)
-	{
-		$accessList = [RoleAssignmentHelper]::GetAzSKRoleAssignmentByScope($this.GetResourceId(), $false, $true);
-
-		return $this.CheckRBACAccess($controlResult, $accessList)
-	}
-
-	hidden [ControlResult] CheckRBACAccess([ControlResult] $controlResult, [PSObject] $accessList)
-	{
-		$resourceAccessList = $accessList | Where-Object { $_.Scope -eq $this.GetResourceId() };
-
-        $controlResult.VerificationResult = [VerificationResult]::Verify;
-
-		if(($resourceAccessList | Measure-Object).Count -ne 0)
-        {
-			$controlResult.SetStateData("Identities having RBAC access at resource level", ($resourceAccessList | Select-Object -Property ObjectId,RoleDefinitionId,RoleDefinitionName,Scope));
-
-            $controlResult.AddMessage("Validate that the following identities have explicitly provided with RBAC access to resource - [$($this.ResourceContext.ResourceName)]");
-            $controlResult.AddMessage([MessageData]::new($this.CreateRBACCountMessage($resourceAccessList), $resourceAccessList));
-        }
-        else
-        {
-            $controlResult.AddMessage("No identities have been explicitly provided with RBAC access to resource - [$($this.ResourceContext.ResourceName)]");
-        }
-
-        $inheritedAccessList = $accessList | Where-Object { $_.Scope -ne $this.GetResourceId() };
-
-		if(($inheritedAccessList | Measure-Object).Count -ne 0)
-        {
-            $controlResult.AddMessage("Note: " + $this.CreateRBACCountMessage($inheritedAccessList) + " have inherited RBAC access to resource. It's good practice to keep the RBAC access to minimum.");
-        }
-        else
-        {
-            $controlResult.AddMessage("No identities have inherited RBAC access to resource");
-        }
-
-		return $controlResult;
-	}
-
-	hidden [string] CreateRBACCountMessage([array] $resourceAccessList)
-	{
-		$nonNullObjectTypes = $resourceAccessList | Where-Object { -not [string]::IsNullOrEmpty($_.ObjectType) };
-		if(($nonNullObjectTypes | Measure-Object).Count -eq 0)
-		{
-			return "$($resourceAccessList.Count) identities";
-		}
-		else
-		{
-			$countBreakupString = [string]::Join(", ",
-									($nonNullObjectTypes |
-										Group-Object -Property ObjectType -NoElement |
-										ForEach-Object { "$($_.Name): $($_.Count)" }
-									));
-			return "$($resourceAccessList.Count) identities ($countBreakupString)";
-		}
-	}
-
-	hidden [bool] CheckMetricAlertConfiguration([PSObject[]] $metricSettings, [ControlResult] $controlResult, [string] $extendedResourceName)
-	{
-		$result = $false;
-		if($metricSettings -and $metricSettings.Count -ne 0)
-		{
-			$resId = $this.GetResourceId() + $extendedResourceName;
-			$resIdMessageString = "";
-			if(-not [string]::IsNullOrWhiteSpace($extendedResourceName))
-			{
-				$resIdMessageString = "for nested resource [$extendedResourceName]";
-			}
-
-			$resourceAlerts = (Get-AzureRmAlertRule -ResourceGroup $this.ResourceContext.ResourceGroupName -WarningAction SilentlyContinue) |
-								Where-Object { $_.Condition -and $_.Condition.DataSource } |
-								Where-Object { $_.Condition.DataSource.ResourceUri -eq $resId };
-
-			$nonConfiguredMetrices = @();
-			$misConfiguredMetrices = @();
-
-			$metricSettings	|
-			ForEach-Object {
-				$currentMetric = $_;
-				$matchedMetrices = @();
-				$matchedMetrices += $resourceAlerts |
-									Where-Object { $_.Condition.DataSource.MetricName -eq $currentMetric.Condition.DataSource.MetricName }
-
-				if($matchedMetrices.Count -eq 0)
-				{
-					$nonConfiguredMetrices += $currentMetric;
-				}
-				else
-				{
-					$misConfigured = @();
-					#$controlResult.AddMessage("Metric object", $matchedMetrices);
-					$matchedMetrices | ForEach-Object {
-						if([Helpers]::CompareObject($currentMetric, $_))
-						{
-							#$this.ControlSettings.MetricAlert.Actions
-							if(($_.Actions.GetType().GetMembers() | Where-Object { $_.MemberType -eq [System.Reflection.MemberTypes]::Property -and $_.Name -eq "Count" } | Measure-Object).Count -ne 0)
-							{
-								$isActionConfigured = $false;
-								foreach ($action in $_.Actions) {
-									if([Helpers]::CompareObject($this.ControlSettings.MetricAlert.Actions, $action))
-									{
-										$isActionConfigured = $true;
-										break;
-									}
-								}
-
-								if(-not $isActionConfigured)
-								{
-									$misConfigured += $_;
-								}
-							}
-							else
-							{
-								if(-not [Helpers]::CompareObject($this.ControlSettings.MetricAlert.Actions, $_.Actions))
-								{
-									$misConfigured += $_;
-								}
-							}
-						}
-						else
-						{
-							$misConfigured += $_;
-						}
-					};
-
-					if($misConfigured.Count -eq $matchedMetrices.Count)
-					{
-						$misConfiguredMetrices += $misConfigured;
-					}
-				}
-			}
-
-			$controlResult.AddMessage("Following metric alerts must be configured $resIdMessageString with settings mentioned below:", $metricSettings);
-			$controlResult.VerificationResult = [VerificationResult]::Failed;
-
-			if($nonConfiguredMetrices.Count -ne 0)
-			{
-				$controlResult.AddMessage("Following metric alerts are not configured $($resIdMessageString):", $nonConfiguredMetrices);
-			}
-
-			if($misConfiguredMetrices.Count -ne 0)
-			{
-				$controlResult.AddMessage("Following metric alerts are not correctly configured $resIdMessageString. Please update the metric settings in order to comply.", $misConfiguredMetrices);
-			}
-
-			if($nonConfiguredMetrices.Count -eq 0 -and $misConfiguredMetrices.Count -eq 0)
-			{
-				$result = $true;
-				$controlResult.AddMessage([VerificationResult]::Passed , "All mandatory metric alerts are correctly configured $resIdMessageString.");
-			}
-		}
-		else
-		{
-			throw [System.ArgumentException] ("The argument 'metricSettings' is null or empty");
-		}
-
-		return $result;
 	}
 
 	hidden AddResourceMetadata([PSObject] $metadataObj)

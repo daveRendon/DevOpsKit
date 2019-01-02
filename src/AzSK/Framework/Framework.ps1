@@ -1,12 +1,7 @@
 Set-StrictMode -Version Latest
 
-# load AI dlls using context
-try {Get-AzureRmContext -ErrorAction SilentlyContinue | Out-Null }
-catch 
-{ 
-	# No need to break execution 
-}
-
+$libraryPath = (Get-Item $PSScriptRoot).Parent.FullName+ "\Lib";
+Add-Type -Path "$libraryPath\Microsoft.IdentityModel.Clients.ActiveDirectory.dll"
 . $PSScriptRoot\Models\Enums.ps1
 
 #Constants
@@ -36,7 +31,6 @@ catch
 . $PSScriptRoot\Models\SVT\SVTEvent.ps1
 . $PSScriptRoot\Models\SVT\SVTResource.ps1
 . $PSScriptRoot\Models\SVT\AttestationOptions.ps1
-. $PSScriptRoot\Models\SVT\PSCloudService.ps1
 . $PSScriptRoot\Models\SVT\PartialScanResourceMap.ps1
 . $PSScriptRoot\Models\RemoteReports\LSRScanResultModel.ps1
 . $PSScriptRoot\Models\RemoteReports\ComplianceStateModel.ps1
@@ -54,8 +48,6 @@ catch
 
 . $PSScriptRoot\Helpers\WebRequestHelper.ps1
 . $PSScriptRoot\Helpers\ActiveDirectoryHelper.ps1
-. $PSScriptRoot\Helpers\RoleAssignmentHelper.ps1
-. $PSScriptRoot\Helpers\SecurityCenterHelper.ps1
 . $PSScriptRoot\Helpers\SVTMapping.ps1
 . $PSScriptRoot\Helpers\IdentityHelpers.ps1
 . $PSScriptRoot\Helpers\ConfigOverride.ps1
@@ -66,9 +58,7 @@ catch
 #Managers
 . $PSScriptRoot\Managers\ConfigurationManager.ps1
 . $PSScriptRoot\Managers\FeatureFlightingManager.ps1
-. $PSScriptRoot\Managers\ControlStateExtension.ps1
 . $PSScriptRoot\Managers\AzSKPDFExtension.ps1
-. $PSScriptRoot\Managers\PartialScanManager.ps1
 
 . $PSScriptRoot\Helpers\OMSHelper.ps1
 . $PSScriptRoot\Helpers\RemoteReportHelper.ps1
@@ -88,9 +78,6 @@ catch
 . $PSScriptRoot\Abstracts\FileOutputBase.ps1
 
 . $PSScriptRoot\Helpers\ResourceHelper.ps1
-. $PSScriptRoot\Helpers\UserSubscriptionDataHelper.ps1
-. $PSScriptRoot\Abstracts\ComplianceBase.ps1
-. $PSScriptRoot\Helpers\ComplianceReportHelper.ps1
 
 #Listeners
 . $PSScriptRoot\Listeners\UserReports\WriteFolderPath.ps1
@@ -109,7 +96,6 @@ catch
 . $PSScriptRoot\Listeners\FixControl\WriteFixControlFiles.ps1
 . $PSScriptRoot\Listeners\EventHub\EventHubOutput.ps1
 . $PSScriptRoot\Listeners\Webhook\WebhookOutput.ps1
-. $PSScriptRoot\Listeners\CA\WriteCAStatus.ps1
 . $PSScriptRoot\Listeners\GenericListener\GenericListener.ps1
 . $PSScriptRoot\Listeners\SecurityRecommendationReport.ps1
 . $PSScriptRoot\Listeners\ListenerHelper.ps1
@@ -118,51 +104,17 @@ catch
 . $PSScriptRoot\Core\SVT\SVTControlAttestation.ps1
 . $PSScriptRoot\Abstracts\CommandBase.ps1
 
-#SubscriptionSecurity
-. $PSScriptRoot\Core\SubscriptionSecurity\Alerts.ps1
-. $PSScriptRoot\Core\SubscriptionSecurity\ARMPolicies.ps1
-
-#CA
-. $PSScriptRoot\Core\ContinuousAssurance\CAAutomation.ps1
-
 #Remaining Abstracts
 . $PSScriptRoot\Abstracts\SVTCommandBase.ps1
 
 #Core
 
-. $PSScriptRoot\Core\SVT\SVTIaasBase.ps1
-(Get-ChildItem -Path "$PSScriptRoot\Core\SVT\Services\" -Recurse -File) |
-    ForEach-Object {
-    . $_.FullName
-}
-(Get-ChildItem -Path "$PSScriptRoot\Core\SubscriptionSecurity\" -Recurse -File -Exclude 'SubscriptionSecurity.ps1') |
-    ForEach-Object {
-    . $_.FullName
-}
-
 (Get-ChildItem -Path "$PSScriptRoot\Core\SVT\AzureDevOps\" -Recurse -File) |
     ForEach-Object {
     . $_.FullName
 }
-. $PSScriptRoot\Core\SubscriptionSecurity\SubscriptionSecurity.ps1
 
-. $PSScriptRoot\Core\FixControl\FixControlConfigResolver.ps1
-. $PSScriptRoot\Core\FixControl\ControlSecurityFixes.ps1
-. $PSScriptRoot\Core\AzureMonitoring\OMSMonitoring.ps1
-. $PSScriptRoot\Core\SVT\SubscriptionCore\SubscriptionCore.ps1
-. $PSScriptRoot\Core\SVT\AzSKCfg\AzSKCfg.ps1
 . $PSScriptRoot\Core\SVT\Resolver.ps1
 . $PSScriptRoot\Core\SVT\AzureDevOpsResourceResolver.ps1
-. $PSScriptRoot\Core\SVT\SVTResourceResolver.ps1
 . $PSScriptRoot\Core\SVT\ServicesSecurityStatus.ps1
-. $PSScriptRoot\Core\SVT\SubscriptionSecurityStatus.ps1
-. $PSScriptRoot\Core\SVT\SVTStatusReport.ps1
-. $PSScriptRoot\Core\AzSKInfo\SecurityRecommendationsReport.ps1
-. $PSScriptRoot\Core\AzSKInfo\BasicInfo.ps1
-. $PSScriptRoot\Core\AzSKInfo\ControlsInfo.ps1
-. $PSScriptRoot\Core\AzSKInfo\EnvironmentInfo.ps1
-. $PSScriptRoot\Core\AzSKInfo\ComplianceInfo.ps1
-. $PSScriptRoot\Core\AzSKInfo\PersistedStateInfo.ps1
-. $PSScriptRoot\Core\ARMChecker\ARMCheckerStatus.ps1
-
-. $PSScriptRoot\Core\PolicySetup\PolicySetup.ps1
+#. $PSScriptRoot\Core\SVT\SVTStatusReport.ps1

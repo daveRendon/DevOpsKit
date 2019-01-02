@@ -5,7 +5,7 @@ class SVTControlAttestation
 	[SVTEventContext[]] $ControlResults = $null
 	hidden [bool] $dirtyCommitState = $false;
 	hidden [bool] $abortProcess = $false;
-	hidden [ControlStateExtension] $controlStateExtension = $null;
+	#hidden [ControlStateExtension] $controlStateExtension = $null;
 	hidden [AttestControls] $AttestControlsChoice;
 	hidden [bool] $bulkAttestMode = $false;
 	[AttestationOptions] $attestOptions;
@@ -20,9 +20,9 @@ class SVTControlAttestation
 		$this.ControlResults = $ctrlResults;
 		$this.AttestControlsChoice = $attestationOptions.AttestControls;
 		$this.attestOptions = $attestationOptions;
-		$this.controlStateExtension = [ControlStateExtension]::new($this.SubscriptionContext, $this.InvocationContext)
-		$this.controlStateExtension.UniqueRunId = $(Get-Date -format "yyyyMMdd_HHmmss");
-		$this.controlStateExtension.Initialize($true)
+		# $this.controlStateExtension = [ControlStateExtension]::new($this.SubscriptionContext, $this.InvocationContext)
+		# $this.controlStateExtension.UniqueRunId = $(Get-Date -format "yyyyMMdd_HHmmss");
+		# $this.controlStateExtension.Initialize($true)
 		$this.ControlSettings=$ControlSettingsJson = [ConfigurationManager]::LoadServerConfigFile("ControlSettings.json");
 	}
 
@@ -460,7 +460,7 @@ class SVTControlAttestation
 						}
 
 						Write-Host "Committing the attestation details for this resource..." -ForegroundColor Cyan
-						$this.controlStateExtension.SetControlState($resourceValueKey, $resourceControlStates, $false)
+						#$this.controlStateExtension.SetControlState($resourceValueKey, $resourceControlStates, $false)
 						Write-Host "Commit succeeded." -ForegroundColor Cyan
 					}
 					
@@ -480,7 +480,7 @@ class SVTControlAttestation
 		}
 		finally
 		{
-			[Helpers]::CleanupLocalFolder([Constants]::AzSKAppFolderPath + "\Temp\$($this.controlStateExtension.UniqueRunId)");
+			#[Helpers]::CleanupLocalFolder([Constants]::AzSKAppFolderPath + "\Temp\$($this.controlStateExtension.UniqueRunId)");
 		}
 	}	
 

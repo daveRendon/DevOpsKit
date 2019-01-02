@@ -42,7 +42,7 @@ class OMSOutput: ListenerBase
 				$currentInstance = [OMSOutput]::GetInstance();
 				try 
 				{
-					[OMSHelper]::SetOMSDetails();
+					#[OMSHelper]::SetOMSDetails();
 					$currentInstance.CommandAction($Event,"Command Started");
 				}
 				catch{
