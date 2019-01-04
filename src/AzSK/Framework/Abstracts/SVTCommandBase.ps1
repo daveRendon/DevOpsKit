@@ -148,7 +148,9 @@ class SVTCommandBase: CommandBase {
         $svtObject.InvocationContext = $this.InvocationContext;
         # ToDo: Assumption: usercomment will only work when storage report feature flag is enable
         $resourceId = $svtObject.GetResourceId(); 
-		$svtObject.ComplianceStateData = $this.FetchComplianceStateData($resourceId);
+        $resourceName=$svtObject.GetResourceName();
+        #Change PartitionKey
+		$svtObject.ComplianceStateData = $this.FetchComplianceStateData($resourceId,$resourceName);
 
         #Include Server Side Exclude Tags
         $svtObject.ExcludeTags += [ConfigurationManager]::GetAzSKConfigData().DefaultControlExculdeTags
@@ -167,15 +169,25 @@ class SVTCommandBase: CommandBase {
         $svtObject.ControlStateExt = $this.ControlStateExt;
     }
 
-    hidden [ComplianceStateTableEntity[]] FetchComplianceStateData([string] $resourceId)
+    hidden [ComplianceStateTableEntity[]] FetchComplianceStateData([string] $resourceId,[string] $resourceName)
 	{
         [ComplianceStateTableEntity[]] $ComplianceStateData = @();
         if($this.IsLocalComplianceStoreEnabled)
         {
+            #Change PartitionKey
+            $partitionKey =""
             if($null -ne $this.ComplianceReportHelper)
             {
-                [string[]] $partitionKeys = @();                
-                $partitionKey = [Helpers]::ComputeHash($resourceId.ToLower());                
+                [string[]] $partitionKeys = @();      
+                if([string]::IsNullOrEmpty($resourceName))
+                {          
+                  $partitionKey = [Helpers]::ComputeHash($resourceId.ToLower());   
+                }  
+                else 
+                {
+                    $ResourceString = $resourceId.ToLower()+$resourceName.ToLower();
+                    $partitionKey = [Helpers]::ComputeHash($ResourceString);
+                }           
                 $partitionKeys += $partitionKey
                 $ComplianceStateData = $this.ComplianceReportHelper.GetSubscriptionComplianceReport($partitionKeys);            
             }

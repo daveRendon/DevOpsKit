@@ -143,7 +143,8 @@
 		'Remove-AzSKAlertMonitoring'
         'Get-AzSKARMTemplateSecurityStatus',
         'Clear-AzSKSessionState',
-		'Update-AzSKPersistedState'
+        'Update-AzSKPersistedState',
+        'Update-AzSKComplianceState',
         'Get-AzSKSecurityRecommendationReport'
     )
 

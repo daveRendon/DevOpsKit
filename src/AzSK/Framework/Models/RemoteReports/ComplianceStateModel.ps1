@@ -49,9 +49,18 @@ class ComplianceStateTableEntity
 	[string] $ChildResourceName = "";
 	[bool] $IsActive = $true;
 
+	#Change PartitionKey
 	[string] GetPartitionKey()
-	{						
-		$HashId = [Helpers]::ComputeHash($this.ResourceId.ToLower());
+	{		
+		if([string]::IsNullOrEmpty($this.ResourceName))		
+		{		
+			$HashId = [Helpers]::ComputeHash($this.ResourceId.ToLower());
+		}
+		else 
+		{
+			$ResourceString = $this.ResourceId.ToLower() + $this.ResourceName.ToLower()
+			$HashId = [Helpers]::ComputeHash($ResourceString);
+		}
 		
 		return $HashId;
 	}
