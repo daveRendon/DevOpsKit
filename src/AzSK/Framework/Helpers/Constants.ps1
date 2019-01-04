@@ -159,7 +159,7 @@ class Constants
 	static [int] $SASTokenExpiryReminderInDays = 30
 	# Local Subscription Report Constants
 	#static [string] $ComplianceReportContainerName = "compliance-state"
-	static [string] $ComplianceReportTableName = "ComplianceState"
+	static [string] $ComplianceReportTableName = "ComplianceStateZg"
 	static [DateTime] $AzSKDefaultDateTime = '1900-01-01T00:00:00'
 	static [int] $ControlResultComplianceInDays = 3
 	static [string] $ComplianceReportPath = [Constants]::AzSKAppFolderPath + "\TempState\ComplianceData"

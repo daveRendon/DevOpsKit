@@ -178,7 +178,18 @@ class SVTBase: AzSKRoot
 		}
 
 		return $this.ResourceId;
-    }
+	}
+	hidden [string] GetResourceName()
+	{
+		$resourceName="";
+		if($this.ResourceContext)
+			{
+           		
+					$resourceName = $this.ResourceContext.ResourceName;
+			
+			}
+		return $resourceName;		
+	}
 
     [bool] ValidateMaintenanceState()
     {

@@ -49,10 +49,10 @@ class ComplianceStateTableEntity
 	[string] $ChildResourceName = "";
 	[bool] $IsActive = $true;
 
+	#Change PartitionKey
 	[string] GetPartitionKey()
-	{						
+	{		
 		$HashId = [Helpers]::ComputeHash($this.ResourceId.ToLower());
-		
 		return $HashId;
 	}
 

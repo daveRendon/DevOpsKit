@@ -148,6 +148,8 @@ class SVTCommandBase: CommandBase {
         $svtObject.InvocationContext = $this.InvocationContext;
         # ToDo: Assumption: usercomment will only work when storage report feature flag is enable
         $resourceId = $svtObject.GetResourceId(); 
+        
+        #Change PartitionKey
 		$svtObject.ComplianceStateData = $this.FetchComplianceStateData($resourceId);
 
         #Include Server Side Exclude Tags
@@ -172,10 +174,13 @@ class SVTCommandBase: CommandBase {
         [ComplianceStateTableEntity[]] $ComplianceStateData = @();
         if($this.IsLocalComplianceStoreEnabled)
         {
+            #Change PartitionKey
+            $partitionKey =""
             if($null -ne $this.ComplianceReportHelper)
             {
-                [string[]] $partitionKeys = @();                
-                $partitionKey = [Helpers]::ComputeHash($resourceId.ToLower());                
+                [string[]] $partitionKeys = @();      
+                
+                $partitionKey = [Helpers]::ComputeHash($resourceId.ToLower());                         
                 $partitionKeys += $partitionKey
                 $ComplianceStateData = $this.ComplianceReportHelper.GetSubscriptionComplianceReport($partitionKeys);            
             }

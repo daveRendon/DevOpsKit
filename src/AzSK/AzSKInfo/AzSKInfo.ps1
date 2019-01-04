@@ -338,3 +338,61 @@ function Get-AzSKSecurityRecommendationReport
 	}
 }
 
+function Update-AzSKComplianceState 
+{	
+	<#
+	.SYNOPSIS
+	This command helps in updating security state stored by DevOps Kit.
+
+	.DESCRIPTION
+	This command helps in updating security state stored by DevOps Kit.
+	
+	.PARAMETER SubscriptionId
+		Subscription id for which DevOps Kit state has to be updated.
+	.PARAMETER StateType
+		This represents the specific type of DevOps Kit state that has to be updated.
+	.PARAMETER FilePath
+		Path to file containing list of controls for which state has to be updated.	
+	.PARAMETER DoNotOpenOutputFolder
+		Switch to specify whether to open output folder containing all security evaluation report or not.
+
+	.LINK
+	https://aka.ms/azskossdocs 
+	#>
+	Param(
+
+		[string]
+        [Parameter(Position = 0, Mandatory = $true, HelpMessage = "Subscription id for which DevOps Kit state has to be updated.")]
+		[ValidateNotNullOrEmpty()]
+		[Alias("sid")]
+		$SubscriptionId
+		
+    )
+
+	Begin
+	{
+		[CommandHelper]::BeginCommand($PSCmdlet.MyInvocation);
+		[ListenerHelper]::RegisterListeners();
+	}
+
+	Process
+	{
+		try 
+		{
+			$complianceInfo = [ComplianceInfo]::new($SubscriptionId, $PSCmdlet.MyInvocation,$false);
+			if ($complianceInfo) 
+			{
+				return $complianceInfo.InvokeFunction($complianceInfo.UpdateStorageComplianceData,@($SubscriptionId, $PSCmdlet.MyInvocation));
+			}
+		}
+		catch 
+		{
+			[EventBase]::PublishGenericException($_);
+		}  		
+	}
+
+	End
+	{
+		[ListenerHelper]::UnregisterListeners();
+	}
+}

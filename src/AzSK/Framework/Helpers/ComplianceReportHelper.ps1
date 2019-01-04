@@ -60,9 +60,11 @@ class ComplianceReportHelper: ComplianceBase
 			$currentScanResults | ForEach-Object {
 				$currentScanResult = $_;
 				$resourceId = $currentScanResult.SubscriptionContext.Scope;
+				$resourceName="";
 				if($currentScanResult.IsResource())
 				{
 					$resourceId = $currentScanResult.ResourceContext.ResourceId;
+					$resourceName=$currentScanResult.ResourceContext.ResourceName;
 				}
 				$controlsToProcess = @();
 				if(($currentScanResult.ControlResults | Measure-Object).Count -gt 0)
@@ -70,8 +72,19 @@ class ComplianceReportHelper: ComplianceBase
 					$controlsToProcess += $currentScanResult.ControlResults;
 				}
 				$controlsToProcess | ForEach-Object {
-					$cScanResult = $_;												
-					$currentResultHashId_p = [Helpers]::ComputeHash($resourceId.ToLower());
+					$cScanResult = $_;	
+					#Change PartitionKey	
+									
+					if([string]::IsNullOrEmpty($resourceName))
+					{	
+						$currentResultHashId_p = [Helpers]::ComputeHash($resourceId.ToLower());
+					}
+					else
+					{
+						$resourceString = $resourceId.ToLower()+$resourceName.ToLower()
+						$currentResultHashId_p = [Helpers]::ComputeHash($resourceString);
+						
+					}
 					$partitionKeys += $currentResultHashId_p;
 				}
 			}
@@ -285,10 +298,19 @@ class ComplianceReportHelper: ComplianceBase
 		$foundPersistedData = ($complianceReport | Measure-Object).Count -gt 0
 		$currentScanResults | ForEach-Object {
 			$currentScanResult = $_
-			$resourceId = $currentScanResult.SubscriptionContext.Scope;
+			
 			if($currentScanResult.IsResource())
 			{
 				$resourceId = $currentScanResult.ResourceContext.ResourceId;
+				$resourceName= $currentScanResult.ResourceContext.ResourceName;
+			}
+			else 
+			{
+				if([Helpers]::CheckMember($currentScanResult,"SubscriptionContext"))
+				{
+					$resourceId = $currentScanResult.SubscriptionContext.Scope;
+					$resourceName = "";
+				}
 			}
 			if($currentScanResult.FeatureName -ne "AzSKCfg")
 			{
@@ -307,7 +329,7 @@ class ComplianceReportHelper: ComplianceBase
 						$partsToHash = $partsToHash + ":" + $cScanResult.ChildResourceName;
 					}
 					$currentResultHashId_r = [Helpers]::ComputeHash($partsToHash.ToLower());
-					$currentResultHashId_p = [Helpers]::ComputeHash($resourceId.ToLower());
+					$currentResultHashId_p = [Helpers]::ComputeHash($resourceId.ToLower()+ $resourceName.ToLower());
 					$persistedScanResult = $null;
 					if($foundPersistedData)
 					{
@@ -371,4 +393,84 @@ class ComplianceReportHelper: ComplianceBase
 			return "";
 		}	
 	}
+
+	hidden [void] FetchComplianceStateFromDb([string] $subId,[string] $CallerId, $invocationContext)
+	{
+		$paramter = New-Object -TypeName ComplianceCustomData
+		$paramter.SubscriptionId=$subId;
+		$paramter.CallerId=$CallerId
+		$result =  [RemoteAPIHelper]::GetComplianceSnapshot($paramter)
+		$Complianceinfo = ConvertFrom-Json -InputObject $result
+		$ComplianceState = New-Object -TypeName "System.Collections.Generic.List[SVTEventContext]";
+		$subContext= [SubscriptionContext]:: new();
+		$subContext.Scope = "/subscriptions/"+$subId;
+		$subContext.SubscriptionId = $subId;
+		[ControlStateExtension] $sc = [ControlStateExtension]::new($subContext, $invocationContext);
+		$sc.Initialize($false);
+		foreach ( $item in $Complianceinfo)
+		{
+			$CResult= New-Object -TypeName ControlResult
+			$StateData = New-Object -TypeName StateData
+			$SVTEvent= New-Object -TypeName SVTEventContext
+			$controlDetails = New-Object -TypeName ControlItem
+			$resourceDetails=[ResourceContext]::new()
+			$CResult.ChildResourceName = "";
+			$CResult.VerificationResult = $item.VerificationResult
+			$CResult.ActualVerificationResult = $item.ActualVerificationResult;
+			if(-not [string]::IsNullOrEmpty($item.FirstFailedOn))
+			{
+				$CResult.FirstFailedOn = $item.FirstFailedOn
+			}
+			if(-not [string]::IsNullOrEmpty($item.FirstScannedOn))
+			{
+				$CResult.FirstScannedOn = $item.FirstScannedOn
+			}
+			$CResult.MaximumAllowedGraceDays=$item.MaximumAllowedGraceDays;
+			$scanFromDays = [System.DateTime]::UtcNow.Subtract($CResult.FirstScannedOn)
+
+					# $CResult.MaximumAllowedGraceDays = [SVTBase]::CalculateGraceInDays($CResult);
+
+					# Setting isControlInGrace Flag		
+					if($scanFromDays.Days -le $CResult.MaximumAllowedGraceDays)
+					{
+						$CResult.IsControlInGrace = $true
+					}
+					else
+					{
+						$CResult.IsControlInGrace = $false
+					}
+			$StateData.AttestedBy = $item.attestedBy;
+			$StateData.AttestedDate = $item.attestedDate
+			$StateData.Justification = $item.Justification
+			$CResult.StateManagement.AttestedStateData=$StateData
+			$controlDetails.ControlId=$item.ControlId
+			$CResult.CurrentSessionContext.IsLatestPSModule =$true
+			$CResult.CurrentSessionContext.Permissions.HasRequiredAccess = $true
+			$CResult.CurrentSessionContext.Permissions.HasAttestationWritePermissions =$sc.HasControlStateWritePermissions
+			$CResult.CurrentSessionContext.Permissions.HasAttestationReadPermissions = $sc.HasControlStateReadPermissions 
+			
+			$controlDetails.Id=$item.ControlIntId
+			$controlDetails.ControlSeverity=$item.ControlSeverity
+			$SVTEvent.ControlResults = $CResult;
+			$SVTEvent.ControlItem=$controlDetails;
+			$resourceDetails.ResourceId=$item.resourceId;
+			$resourceDetails.ResourceName=$item.resourceName;
+			$SVTEvent.FeatureName=$item.FeatureName;
+			$resourceDetails.ResourceGroupName=$item.ResourceGroupName;
+			$SVTEvent.ResourceContext=$resourceDetails
+			$SVTEvent.SubscriptionContext = $subContext
+			$ComplianceState.Add($SVTEvent);
+
+
+		}
+		
+		$this.StoreComplianceDataInUserSubscription($ComplianceState);
+		
+	}
+
+}
+class ComplianceCustomData
+{
+	[string] $SubscriptionId
+	[string] $CallerId
 }
