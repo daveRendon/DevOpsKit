@@ -189,17 +189,9 @@ class WriteCAStatus: ListenerBase
                             [string[]] $partitionKeys = @();       
                             [ComplianceStateTableEntity[]] $RecordsToBeDeleted = @();         
                             #Change PartitionKey
-                            if([string]::IsNullOrEmpty($ResourceControlsDataMini.ResourceName)){
-                            $partitionKey = [Helpers]::ComputeHash($ResourceControlsDataMini.ResourceId.ToLower());                
-                            }
-                            else 
-                            {
-                                $ResourceString = $ResourceControlsDataMini.ResourceId.ToLower()+$ResourceControlsDataMini.ResourceName.ToLower()
-                                $partitionKey = [Helpers]::ComputeHash($ResourceString);                
-                            }
+                            $partitionKey = [Helpers]::ComputeHash($ResourceControlsDataMini.ResourceId.ToLower()); 
                             $partitionKeys += $partitionKey
-                            $complianceReportHelper = [ComplianceReportHelper]::new($props.SubscriptionContext, $version); 
-
+                            $complianceReportHelper = [ComplianceReportHelper]::new($props.SubscriptionContext, $version);
                             $ComplianceStateData = $null;
 
                             if($complianceReportHelper.HaveRequiredPermissions())

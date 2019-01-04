@@ -74,17 +74,7 @@ class ComplianceReportHelper: ComplianceBase
 				$controlsToProcess | ForEach-Object {
 					$cScanResult = $_;	
 					#Change PartitionKey	
-									
-					if([string]::IsNullOrEmpty($resourceName))
-					{	
-						$currentResultHashId_p = [Helpers]::ComputeHash($resourceId.ToLower());
-					}
-					else
-					{
-						$resourceString = $resourceId.ToLower()+$resourceName.ToLower()
-						$currentResultHashId_p = [Helpers]::ComputeHash($resourceString);
-						
-					}
+					$currentResultHashId_p = [Helpers]::ComputeHash($resourceId.ToLower());
 					$partitionKeys += $currentResultHashId_p;
 				}
 			}
