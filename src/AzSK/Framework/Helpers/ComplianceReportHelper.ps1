@@ -60,11 +60,9 @@ class ComplianceReportHelper: ComplianceBase
 			$currentScanResults | ForEach-Object {
 				$currentScanResult = $_;
 				$resourceId = $currentScanResult.SubscriptionContext.Scope;
-				$resourceName="";
 				if($currentScanResult.IsResource())
 				{
 					$resourceId = $currentScanResult.ResourceContext.ResourceId;
-					$resourceName=$currentScanResult.ResourceContext.ResourceName;
 				}
 				$controlsToProcess = @();
 				if(($currentScanResult.ControlResults | Measure-Object).Count -gt 0)
@@ -292,7 +290,6 @@ class ComplianceReportHelper: ComplianceBase
 			if($currentScanResult.IsResource())
 			{
 				$resourceId = $currentScanResult.ResourceContext.ResourceId;
-				$resourceName= $currentScanResult.ResourceContext.ResourceName;
 			}
 			else 
 			{
@@ -319,7 +316,7 @@ class ComplianceReportHelper: ComplianceBase
 						$partsToHash = $partsToHash + ":" + $cScanResult.ChildResourceName;
 					}
 					$currentResultHashId_r = [Helpers]::ComputeHash($partsToHash.ToLower());
-					$currentResultHashId_p = [Helpers]::ComputeHash($resourceId.ToLower()+ $resourceName.ToLower());
+					$currentResultHashId_p = [Helpers]::ComputeHash($resourceId.ToLower());
 					$persistedScanResult = $null;
 					if($foundPersistedData)
 					{
@@ -384,12 +381,10 @@ class ComplianceReportHelper: ComplianceBase
 		}	
 	}
 
-	hidden [void] FetchComplianceStateFromDb([string] $subId,[string] $CallerId, $invocationContext)
+	hidden [void] FetchComplianceStateFromDb([string] $subId, $invocationContext)
 	{
-		$paramter = New-Object -TypeName ComplianceCustomData
-		$paramter.SubscriptionId=$subId;
-		$paramter.CallerId=$CallerId
-		$result =  [RemoteAPIHelper]::GetComplianceSnapshot($paramter)
+		
+		$result =  [RemoteAPIHelper]::GetComplianceSnapshot($subId)
 		$Complianceinfo = ConvertFrom-Json -InputObject $result
 		$ComplianceState = New-Object -TypeName "System.Collections.Generic.List[SVTEventContext]";
 		$subContext= [SubscriptionContext]:: new();
@@ -458,9 +453,4 @@ class ComplianceReportHelper: ComplianceBase
 		
 	}
 
-}
-class ComplianceCustomData
-{
-	[string] $SubscriptionId
-	[string] $CallerId
 }

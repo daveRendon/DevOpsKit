@@ -329,26 +329,13 @@ class ComplianceInfo: CommandBase
 
 	hidden [void] UpdateStorageComplianceData([string] $subId, [InvocationInfo] $invocationContext)
 	{
-		$currentContext = [Helpers]::GetCurrentRMContext();
-		$signInName=$currentContext.Account
-		$roles = Get-AzureRmRoleAssignment -SignInName $signInName
-		$callerId = $roles.ObjectId | Select-Object -First 1  
-		$subGuid = $roles.Scope.Split('/')[2];
 		try
 		{
-			if($subId -in $subGuid)
-			{
-				$ComplianceRptHelper = [ComplianceReportHelper]::new($this.SubscriptionContext, $this.GetCurrentModuleVersion());
-				$this.PublishCustomMessage("Fetching data from backend. This may take a few minutes..");
-				$ComplianceRptHelper.FetchComplianceStateFromDb($subId, $callerId, $invocationContext)
-				$this.PublishCustomMessage("Completed. Please run GRS and GSS with co-admin access once to make sure the latest data is in place.");
+			$ComplianceRptHelper = [ComplianceReportHelper]::new($this.SubscriptionContext, $this.GetCurrentModuleVersion());
+			$this.PublishCustomMessage("Fetching data from backend. This may take a few minutes..");
+			$ComplianceRptHelper.FetchComplianceStateFromDb($subId, $invocationContext)
+			$this.PublishCustomMessage("Completed. Please run GRS and GSS with co-admin access once to make sure the latest data is in place.");
 
-			
-			}
-			else
-			{
-				throw "Invalid subid"
-			}
 		}
 		catch
 		{

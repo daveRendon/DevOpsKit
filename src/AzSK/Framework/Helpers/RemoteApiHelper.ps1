@@ -1,7 +1,7 @@
 ﻿Set-StrictMode -Version Latest
 
 class RemoteApiHelper {
-    hidden static [string] $ApiBaseEndpoint =[ConfigurationManager]::GetAzSKConfigData().AzSKApiBaseURL; #
+    hidden static [string] $ApiBaseEndpoint = "https://localhost:44348/api/"
 
     hidden static [string] GetAccessToken() {
         $rmContext = [Helpers]::GetCurrentRMContext();
@@ -27,6 +27,7 @@ class RemoteApiHelper {
     }
     hidden static [psobject] GetContent($uri, $content, $type) 
     {
+       
         $url = [RemoteApiHelper]::ApiBaseEndpoint + $uri;
         $accessToken = [RemoteApiHelper]::GetAccessToken()
             $result = Invoke-WebRequest -Uri $url `
@@ -34,6 +35,7 @@ class RemoteApiHelper {
                 -Body $content `
                 -ContentType $type `
                 -Headers @{"Authorization" = "Bearer $accessToken"} `
+                -UseBasicParsing
                 
             return $result.Content
         
@@ -82,7 +84,7 @@ class RemoteApiHelper {
     static [void] PostPolicyComplianceTelemetry($PolicyComplianceData){
 		[RemoteApiHelper]::PostJsonContent("/policycompliancedata", $PolicyComplianceData) | Out-Null	
     }
-    static [string] GetComplianceSnapshot($parameters){
+    static [string] GetComplianceSnapshot([string] $parameters){
 		return([RemoteApiHelper]::GetJsonContent("/scanresults/fetchcompliancedata", $parameters) | Out-String)	
     }
     
