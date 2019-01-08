@@ -1,7 +1,7 @@
 ﻿Set-StrictMode -Version Latest
 
 class RemoteApiHelper {
-    hidden static [string] $ApiBaseEndpoint = "https://localhost:44348/api/"
+    hidden static [string] $ApiBaseEndpoint =[ConfigurationManager]::GetAzSKConfigData().AzSKApiBaseURL; #
 
     hidden static [string] GetAccessToken() {
         $rmContext = [Helpers]::GetCurrentRMContext();
