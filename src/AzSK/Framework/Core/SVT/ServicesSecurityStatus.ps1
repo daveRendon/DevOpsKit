@@ -147,6 +147,7 @@ class ServicesSecurityStatus: SVTCommandBase
 		$this.PublishCustomMessage("`nNumber of resources for which security controls will be evaluated: $($automatedResources.Count)",[MessageType]::Info);
 		$totalResources = $automatedResources.Count;
 		[int] $currentCount = 0;
+		$childResources=@();
 		$automatedResources | ForEach-Object {
 			$exceptionMessage = "Exception for resource: [ResourceType: $($_.ResourceTypeMapping.ResourceTypeName)] [ResourceGroupName: $($_.ResourceGroupName)] [ResourceName: $($_.ResourceName)]"
             try
@@ -189,11 +190,12 @@ class ServicesSecurityStatus: SVTCommandBase
 					$svtObject.RunningLatestPSModule = $this.RunningLatestPSModule
 					$this.SetSVTBaseProperties($svtObject);
 					$currentResourceResults += $svtObject.$methodNameToCall();
-					$svtObject.ChildSvtObjects | ForEach-Object {
-						$_.RunningLatestPSModule = $this.RunningLatestPSModule
-						$this.SetSVTBaseProperties($_)
-						$currentResourceResults += $_.$methodNameToCall();
-					}
+					$childResources += $svtObject.ChildSvtObjects
+					# $svtObject.ChildSvtObjects | ForEach-Object {
+					# 	$_.RunningLatestPSModule = $this.RunningLatestPSModule
+					# 	$this.SetSVTBaseProperties($_)
+					# 	$currentResourceResults += $_.$methodNameToCall();
+					# }
 					$result += $currentResourceResults;
 
 				}
@@ -238,8 +240,16 @@ class ServicesSecurityStatus: SVTCommandBase
 				$this.CommandError($_);
             }
         }
-		
-		
+		[SVTEventContext[]] $currentResourceResults = @();
+		$childResources = $childResources | Sort-Object -Property "ResourceId" | Get-Unique
+		if(($childResources | Measure-Object).Count -gt 0){
+			$childResources|ForEach-Object {
+						$_.RunningLatestPSModule = $this.RunningLatestPSModule
+						$this.SetSVTBaseProperties($_)
+						$currentResourceResults += $_.$methodNameToCall();
+					}
+					$result += $currentResourceResults;
+				}
 		return $result;
 	}
 
